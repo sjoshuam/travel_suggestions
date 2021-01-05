@@ -38,7 +38,7 @@ city_data <- mutate(city_data,
 
 ## filter to relevant columns and rename
 city_data <- city_data %>%
-  rename("city" = ...1, "population" = ...10, 'proper' = ...2,
+  rename("city" = ...1, "population" = ...10, "proper" = ...2,
     "continent" = ...18) %>%
   select(city, population, proper, continent, prim_key)
 
@@ -59,7 +59,7 @@ city_data <- city_data %>%
 
 ## refine country names and generate full place names
 city_data <- city_data %>%
-  mutate(city = str_replace(city, '[0-9]+$', '')) %>%
+  mutate(city = str_replace(city, "[0-9]+$", "")) %>%
   mutate(country = if_else(is.na(population), city, as.character(NA))) %>%
   mutate("city" = str_replace(city, " [(][^)]+[)]", "")) %>%
   fill(country, .direction = "down") %>%
@@ -106,7 +106,8 @@ nearby_sites <- spDists(
 
 ## find world heritage sites near each city
 nearby_sites <- apply(nearby_sites <= 50, 1, which) %>%
-  lapply(function(x) {heritage_sites[x, "prim_key"]}) %>%
+  lapply(function(x) {
+    heritage_sites[x, "prim_key"]}) %>%
   enframe(value = "heritage_key") %>%
   select(heritage_key) %>%
   mutate(heritage_sites = sapply(heritage_key, nrow))

@@ -11,9 +11,8 @@
 
 ## environmental set up
 remove(list = objects())
-options(width = 80, scipen = 2, digits= 6, load_cached_geocode = TRUE,
-  adjust_advice_for_covid= TRUE)
-library(lintr) # lint("3_compile_country_data.R")
+options(width = 80, scipen = 2, digits = 6, load_cached_geocode = TRUE,
+  adjust_advice_for_covid = TRUE)
 library(ggmap)
 library(readxl)
 library(tidyverse)
@@ -28,7 +27,7 @@ country_development <- read_xlsx("A_Inputs/county_development.xlsx", skip = 4)
 country_codes <- read_xlsx("A_Inputs/country_codes.xlsx")
 
 ## load processed data from previous scripts
-city_data <-readRDS("B_Intermediates/city_data.RData")
+city_data <- readRDS("B_Intermediates/city_data.RData")
 dos_advice <- readRDS("B_Intermediates/dos_advice.RData")
 heritage_sites <- readRDS("B_Intermediates/heritage_sites.RData")
 
@@ -36,20 +35,20 @@ heritage_sites <- readRDS("B_Intermediates/heritage_sites.RData")
 
 ## simplify hdi dataset to most recent, relevant data
 country_development <- country_development %>%
-  select(Country, '2017', '2018', '2019', 'HDI Rank') %>%
-  rename('country' = 1, 'yr2017' = 2, 'yr2018' = 3, 'yr2019' = 4, 'rank'= 5) %>%
-  mutate(hdi = if_else(yr2019 == '..', yr2018, yr2019)) %>%
-  mutate(hdi = if_else(hdi == '..', yr2017, hdi)) %>%
-  filter(!is.na(rank), hdi != '..') %>%
+  select(Country, "2017", "2018", "2019", "HDI Rank") %>%
+ rename("country" = 1, "yr2017" = 2, "yr2018" = 3, "yr2019" = 4, "rank" = 5) %>%
+  mutate(hdi = if_else(yr2019 == "..", yr2018, yr2019)) %>%
+  mutate(hdi = if_else(hdi == "..", yr2017, hdi)) %>%
+  filter(!is.na(rank), hdi != "..") %>%
   select(country, hdi) %>%
   mutate(hdi = round(as.numeric(hdi), 3))
 
 ## simplify country codes dataset to relevant data
 country_codes <- country_codes %>%
-  rename('region1' = `Sub-region Name`, 'region' = `Intermediate Region Name`,
-    'country_name' = `Country or Area`, 'country_iso' = `ISO-alpha3 Code`) %>%
+  rename("region1" = `Sub-region Name`, "region" = `Intermediate Region Name`,
+    "country_name" = `Country or Area`, "country_iso" = `ISO-alpha3 Code`) %>%
   select(region1, region, country_name, country_iso) %>%
-  mutate(region = if_else(region == 'Channel Islands',
+  mutate(region = if_else(region == "Channel Islands",
     as.character(NA), region)) %>%
   mutate(region = ifelse(is.na(region), region1, region)) %>%
   select(-region1)
@@ -84,17 +83,17 @@ all_countries <- unique(sort(all_countries))
 ## clean out string detritus
 all_countries <- bind_cols(
   "keys" = all_countries,
-  "queries"= str_replace(all_countries, "[^A-Za-z ]", "")
+  "queries" = str_replace(all_countries, "[^A-Za-z ]", "")
 )
 
 ## query google API to resolve names
 all_countries <- bind_cols(all_countries,
-  geocode(pull(all_countries, queries), output= "latlona")) %>%
+  geocode(pull(all_countries, queries), output = "latlona")) %>%
   select(-lon, -lat) %>%
-  mutate(country_key = str_replace_all(address, '.*, ', ''))
+  mutate(country_key = str_replace_all(address, ".*, ", ""))
 
 ## cache results
-saveRDS(all_countries, file= "B_Intermediates/countries_geocode_cache.RData")
+saveRDS(all_countries, file = "B_Intermediates/countries_geocode_cache.RData")
 remove(all_countries)
 
 }
@@ -104,7 +103,7 @@ all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
   select(-address, -queries)
 
 ## match google country keys to all country datasets
-country_development <- country_development %>% 
+country_development <- country_development %>%
   left_join(all_countries, by = c("country" = "keys"))
 country_codes <- country_codes %>%
   left_join(all_countries, by = c("country_name" = "keys"))
@@ -127,7 +126,7 @@ regional_hdi <- country_codes %>%
   summarize("regional_hdi" = mean(hdi, na.rm = TRUE))
 
 country_codes <- country_codes %>%
-  left_join(regional_hdi, by= "region") %>%
+  left_join(regional_hdi, by = "region") %>%
   mutate(hdi = if_else(is.na(hdi), regional_hdi, hdi)) %>%
   select(-regional_hdi)
 remove(regional_hdi)
@@ -135,24 +134,24 @@ remove(regional_hdi)
 ##  transfer missing travel advisories for territories from parent country
 territories <- tribble(
   ~territory, ~new_key,
-  'PRI', 'USA', 'VIR', 'USA', 'GUM', 'USA', 'MNP', 'USA', 'ASM', 'USA',
-  'MTQ', 'FRA', 'SPM', 'FRA', 'PYF', 'FRA', 'WLF', 'FRA',
-  'JEY', 'GBR', 'IMN', 'GBR', 'PCN', 'GBR',
-  'GRL', 'DNK', 'FRO', 'DNK',
-  'NIU', 'NZL',
-  'FLK', 'ARG',
-  'ALA', 'FIN',
-  'SMR', 'ITA'
+  "PRI", "USA", "VIR", "USA", "GUM", "USA", "MNP", "USA", "ASM", "USA",
+  "MTQ", "FRA", "SPM", "FRA", "PYF", "FRA", "WLF", "FRA",
+  "JEY", "GBR", "IMN", "GBR", "PCN", "GBR",
+  "GRL", "DNK", "FRO", "DNK",
+  "NIU", "NZL",
+  "FLK", "ARG",
+  "ALA", "FIN",
+  "SMR", "ITA"
   )
 
 territories <- left_join(country_codes, territories,
-  by= c('country_iso' = 'territory')) %>%
-  select('country_iso', 'new_key') %>%
-  left_join(country_codes, by = c('new_key' = 'country_iso')) %>%
+  by = c("country_iso" = "territory")) %>%
+  select("country_iso", "new_key") %>%
+  left_join(country_codes, by = c("new_key" = "country_iso")) %>%
   select(country_iso, new_key, dos_level)
 
 country_codes <- country_codes %>%
-  add_column(rename(select(territories, 'dos_level'), 'dos2' = 1)) %>%
+  add_column(rename(select(territories, "dos_level"), "dos2" = 1)) %>%
   mutate(dos_level = if_else(is.na(dos_level), dos2, dos_level)) %>%
   select(-dos2)
 remove(territories)
@@ -171,37 +170,37 @@ city_data <- semi_join(city_data, country_data, by = "country_key") %>%
 capitol_city <- city_data %>%
   arrange(population) %>%
   arrange(capitol) %>%
-  summarize('capitol' = last(address))
+  summarize("capitol" = last(address))
 
 largest_city <- city_data %>%
   arrange(population) %>%
-  summarize('largest' = last(address))
+  summarize("largest" = last(address))
 
 culture_city <- city_data %>%
   arrange(population) %>%
   arrange(heritage_sites) %>%
-  summarize('cultural' = last(address))
+  summarize("cultural" = last(address))
 
 top_cities <- capitol_city %>%
-  left_join(largest_city, by= "country_key") %>%
-  left_join(culture_city, by= "country_key")
+  left_join(largest_city, by = "country_key") %>%
+  left_join(culture_city, by = "country_key")
 remove(largest_city, capitol_city, culture_city)
 
 ## extract data for each notable city and package for the country dataset
 top_cities <- top_cities %>%
-  pivot_longer(c('capitol', 'largest', 'cultural'), names_to = "criteria") %>%
+  pivot_longer(c("capitol", "largest", "cultural"), names_to = "criteria") %>%
   left_join(
     select(ungroup(city_data), city, capitol, population, heritage_sites, lon,
       lat, address, heritage_key),
-    by= c('value' = 'address')
+    by = c("value" = "address")
     ) %>%
   filter(!duplicated(value)) %>%
   select(-value) %>%
   group_by(country_key) %>%
   nest() %>%
-  rename('notable_cities' = 'data')
+  rename("notable_cities" = "data")
 
-country_data <- left_join(country_data, top_cities, by= "country_key") %>%
+country_data <- left_join(country_data, top_cities, by = "country_key") %>%
   filter(!sapply(notable_cities, is.null)) %>%
   arrange(country_key) %>%
   filter(!duplicated(country_key))
@@ -214,12 +213,12 @@ preview_results <- country_data %>%
   arrange(1 - hdi_bracket, dos_level, 1 - hdi) %>%
   group_by(region) %>%
   slice_head(n = 2) %>%
-  mutate('region' = str_replace(region, "-eastern", '-Eastern')) %>%
+  mutate("region" = str_replace(region, "-eastern", "-Eastern")) %>%
   mutate("region" = str_replace(region, "[a-z]+ern ", " ")) %>%
   mutate("region" = str_replace(region, "Central", "C")) %>%
   mutate("region" = str_replace(region, "Middle", "C")) %>%
   mutate("region" = str_replace(region, "South", "S")) %>%
-  ungroup() 
+  ungroup()
 
 slice(preview_results, 01:20)
 slice(preview_results, 21:40)
@@ -229,6 +228,6 @@ filter(preview_results, country_iso == "ZAF") %>% pull(notable_cities)
 
 ## EXPORT FINAL DATASET ==========
 save(city_data, country_data, heritage_sites,
-  file= "B_Intermediates/processed_data.RData")
+  file = "B_Intermediates/processed_data.RData")
 
 ##########==========##########==========##########==========##########==========

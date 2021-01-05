@@ -18,7 +18,7 @@ library(tidyverse)
 ## QUERY STATE DEPT RSS FEED FOR ADVISORIES ==========
 
 ## read in RSS feed
-dos_rss <- read_html("https://travel.state.gov/_res/rss/TAsTWs.xml") 
+dos_rss <- read_html("https://travel.state.gov/_res/rss/TAsTWs.xml")
 
 ## PARSE ADVISORIES ==========
 
@@ -53,12 +53,12 @@ dos_reason <- dos_rss %>%
   map_chr(nth, 2) %>%
   str_replace("\\s", " ") %>%
   str_replace("(^\\s+)|(\\s+$)", "") %>%
-  enframe(value= "reasons")
+  enframe(value = "reasons")
 
 ## incorporate into primary data object
 dos_advice <- bind_cols(dos_level, select(dos_reason, reasons)) %>%
   mutate("reasons" = if_else(level_num == 1, "(none)", reasons)) %>%
-  mutate("covid_adj"= if_else(reasons == "COVID-19", level_num - 1L, level_num))
+ mutate("covid_adj" = if_else(reasons == "COVID-19", level_num - 1L, level_num))
 remove(dos_reason, dos_level)
 
 ## PATCH DATA IDEOSYNCRACIES ==========
@@ -67,7 +67,6 @@ dos_advice <- dos_advice %>%
   mutate(country = str_replace(country, "^Israel.*", "Israel"))
   
 ## EXPORT FINAL DATASET ==========
-saveRDS(dos_advice, file= "B_Intermediates/dos_advice.RData")
-
+saveRDS(dos_advice, file = "B_Intermediates/dos_advice.RData")
 
 ##########==========##########==========##########==========##########==========
