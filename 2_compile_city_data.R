@@ -38,20 +38,28 @@ city_data <- mutate(city_data,
 
 ## filter to relevant columns and rename
 city_data <- city_data %>%
-  rename("city" = ...1, "population" = ...2, "continent" = ...18) %>%
-  select("city", "population", "continent", "prim_key")
+  rename("city" = ...1, "population" = ...10, 'proper' = ...2,
+    "continent" = ...18) %>%
+  select(city, population, proper, continent, prim_key)
+
+## fill in missing metro population statistics with city proper statistics
 city_data$population <- as.numeric(city_data$population)
-  
+city_data$proper <- as.numeric(city_data$proper)
+city_data <- city_data %>%
+  mutate(population = if_else(is.na(population), proper, population)) %>%
+  select(-proper)
+
 ## filter non-city rows and note capitols
 city_data <- city_data %>%
   replace_na(list("continent" = FALSE)) %>%
-  mutate("source" = str_detect(city, "[0-9]{4,4} [(][A-Z]{4,4}[)]")) %>%
+  mutate("source" = str_detect(city, "[0-9]{4,4}[*]* [(][A-Z]{4,4}[)]")) %>%
   filter(!continent, !source) %>%
   select(-continent, -source) %>%
   mutate("capitol" = if_else(city == toupper(city), TRUE, FALSE))
 
 ## refine country names and generate full place names
 city_data <- city_data %>%
+  mutate(city = str_replace(city, '[0-9]+$', '')) %>%
   mutate(country = if_else(is.na(population), city, as.character(NA))) %>%
   mutate("city" = str_replace(city, " [(][^)]+[)]", "")) %>%
   fill(country, .direction = "down") %>%

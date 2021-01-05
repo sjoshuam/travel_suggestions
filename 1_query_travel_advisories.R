@@ -11,7 +11,6 @@
 ## environment set-up
 remove(list = objects())
 options(width = 80, scipen = 2, digits = 6)
-library(lintr) #lint("1_query_travel_advisories.R")
 library(rvest)
 library(tidyverse)
 
@@ -62,6 +61,11 @@ dos_advice <- bind_cols(dos_level, select(dos_reason, reasons)) %>%
   mutate("covid_adj"= if_else(reasons == "COVID-19", level_num - 1L, level_num))
 remove(dos_reason, dos_level)
 
+## PATCH DATA IDEOSYNCRACIES ==========
+dos_advice <- dos_advice %>%
+  add_row(country = "USA", level_num = 1, covid_adj = 1, reasons = "(none)") %>%
+  mutate(country = str_replace(country, "^Israel.*", "Israel"))
+  
 ## EXPORT FINAL DATASET ==========
 saveRDS(dos_advice, file= "B_Intermediates/dos_advice.RData")
 
