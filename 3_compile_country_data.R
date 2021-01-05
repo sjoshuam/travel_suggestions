@@ -102,6 +102,14 @@ remove(all_countries)
 all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
   select(-address, -queries)
 
+## fix mis-codes
+all_countries[all_countries$keys == "Réunion", "country_key"] <- "france"
+all_countries[all_countries$keys == "Namibia", "country_key"] <- "namibia"
+all_countries[all_countries$keys == "Georgia", "country_key"] <- "georgia"
+all_countries[all_countries$keys == "Holy See", "country_key"] <- "italy"
+all_countries[all_countries$keys == "Jordan", "country_key"] <- "jordan"
+
+
 ## match google country keys to all country datasets
 country_development <- country_development %>%
   left_join(all_countries, by = c("country" = "keys"))
@@ -151,9 +159,10 @@ territories <- left_join(country_codes, territories,
   select(country_iso, new_key, dos_level)
 
 country_codes <- country_codes %>%
-  add_column(rename(select(territories, "dos_level"), "dos2" = 1)) %>%
+  add_column(rename(select(territories, "dos_level"), "dos2" = "dos_level")) %>%
   mutate(dos_level = if_else(is.na(dos_level), dos2, dos_level)) %>%
   select(-dos2)
+
 remove(territories)
 
 ## drop incomplete records
@@ -205,26 +214,6 @@ country_data <- left_join(country_data, top_cities, by = "country_key") %>%
   arrange(country_key) %>%
   filter(!duplicated(country_key))
 remove(top_cities)
-
-## PREVIEW RECOMMENDATIONS ==========
-
-preview_results <- country_data %>%
-  mutate(hdi_bracket = floor(hdi / 0.2) * 0.2) %>%
-  arrange(1 - hdi_bracket, dos_level, 1 - hdi) %>%
-  group_by(region) %>%
-  slice_head(n = 2) %>%
-  mutate("region" = str_replace(region, "-eastern", "-Eastern")) %>%
-  mutate("region" = str_replace(region, "[a-z]+ern ", " ")) %>%
-  mutate("region" = str_replace(region, "Central", "C")) %>%
-  mutate("region" = str_replace(region, "Middle", "C")) %>%
-  mutate("region" = str_replace(region, "South", "S")) %>%
-  ungroup()
-
-slice(preview_results, 01:20)
-slice(preview_results, 21:40)
-slice(preview_results, 41:60)
-
-filter(preview_results, country_iso == "ZAF") %>% pull(notable_cities)
 
 ## EXPORT FINAL DATASET ==========
 save(city_data, country_data, heritage_sites,
