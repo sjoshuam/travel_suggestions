@@ -89,7 +89,9 @@ regional_norms <- country_data %>%
     population_score = median(population),
     population_var = mad(population),
     heritage_score = median(heritage_sites),
-    heritage_var = max(mad(heritage_sites), 0.5)
+    heritage_var = max(mad(heritage_sites), 0.5),
+    rights_score = median(human_rights),
+    rights_var = max(mad(human_rights), 0.5)
     )
 
 country_data <- left_join(country_data, regional_norms, by = "region")
@@ -106,12 +108,19 @@ country_data <- country_data %>%
   population_score = truncate_score(
     (population - population_score) / population_var),
     heritage_score = truncate_score(
-      (heritage_sites - heritage_score) / heritage_var)
+      (heritage_sites - heritage_score) / heritage_var),
+    rights_score = truncate_score(
+      (human_rights - rights_score) / rights_var)
     ) %>%
-  select(-hdi_var, -dos_var, -population_var, -heritage_var) %>%
+  select(-hdi_var, -dos_var, -population_var, -heritage_var, -rights_var) %>%
   mutate(
     composite_score = round(
-      hdi_score + dos_score + population_score + heritage_score, 3))
+      population_score * 0.25 +
+      heritage_score   * 0.25 +
+      dos_score        * 0.18 +
+      hdi_score        * 0.16 +
+      rights_score     * 0.16,
+      3))
 remove(truncate_score)
 
 ## restore variables to unmodified states
@@ -124,10 +133,13 @@ country_data <- country_data %>%
 ## find top scoring countries for each region
 suggested_countries <- country_data %>%
   group_by(region) %>%
-  slice_max(composite_score, n = 3) %>%
+  slice_max(composite_score, n = 2) %>%
   arrange(region) %>%
-  select(region, country_key, composite_score,
-    hdi, dos_level, population, heritage_sites, country_iso)
+  select(country_key, composite_score,
+    population, heritage_sites,
+    hdi, dos_level, human_rights,
+    region, country_iso
+    )
 
 ## PLOT WORLD MAP ==========
 

@@ -12,7 +12,7 @@
 ## environmental set up
 remove(list = objects())
 options(width = 80, scipen = 2, digits = 6, load_cached_geocode = TRUE,
-  adjust_advice_for_covid = TRUE)
+  adjust_advice_for_covid = FALSE)
 library(ggmap)
 library(readxl)
 library(tidyverse)
@@ -25,6 +25,7 @@ source("~/Documents/Coding/api_keys/GoogleAPI.R")
 ## read in new data
 country_development <- read_xlsx("A_Inputs/county_development.xlsx", skip = 4)
 country_codes <- read_xlsx("A_Inputs/country_codes.xlsx")
+human_rights <-  read_xlsx("A_Inputs/human_rights.xlsx", skip = 1)
 
 ## load processed data from previous scripts
 city_data <- readRDS("B_Intermediates/city_data.RData")
@@ -33,12 +34,23 @@ heritage_sites <- readRDS("B_Intermediates/heritage_sites.RData")
 
 ## RESHAPE NEW COUNTRY DATASETS ==========
 
+## simplify human rights database to most recent relevant data
+human_rights <- human_rights %>%
+  rename(country = `Country/Territory`, human_rights = Total) %>%
+  select(country, Edition, human_rights) %>%
+  pivot_wider(names_from = Edition, values_from = human_rights)
+
+average_score <- round(rowMeans(select(human_rights, -country), na.rm = TRUE))
+human_rights <- human_rights %>%
+  mutate(`human_rights` = if_else(is.na(`2020`), average_score, `2020`)) %>%
+  select(country, human_rights)
+remove(average_score)
 
 ## simplify hdi dataset to most recent, relevant data
 backup_hdi <- country_development %>%
   select(-`HDI Rank`, -`Country`) %>%
   apply(2, as.numeric) %>%
-  rowMeans(na.rm= TRUE)
+  rowMeans(na.rm = TRUE)
 
 
 country_development <- country_development %>%
@@ -79,7 +91,6 @@ dos_advice <- select(dos_advice, -covid_adj, -reasons, -level_num)
 
 ## STANDARDIZE COUNTRY PRIMARY KEYS AND COMPILE COUNTRY DATA ==========
 
-
 if (!options()$load_cached_geocode) {
 
 ## compile all unique country strings
@@ -87,7 +98,8 @@ all_countries <- c(
   pull(country_development, country),
   pull(country_codes, country_name),
   pull(dos_advice, country),
-  pull(city_data, country)
+  pull(city_data, country),
+  pull(human_rights, country)
   )
 all_countries <- unique(sort(all_countries))
 
@@ -117,7 +129,7 @@ all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
 all_countries[all_countries$keys == "Réunion", "country_key"] <- "reunion"
 all_countries[all_countries$keys == "Namibia", "country_key"] <- "namibia"
 all_countries[all_countries$keys == "Georgia", "country_key"] <- "georgia"
-all_countries[all_countries$keys == "Holy See", "country_key"] <- "italy"
+all_countries[all_countries$keys == "Holy See", "country_key"] <- "vatican"
 all_countries[all_countries$keys == "Jordan", "country_key"] <- "jordan"
 
 
@@ -130,40 +142,44 @@ dos_advice <- dos_advice %>%
   left_join(all_countries, by = c("country" = "keys"))
 city_data <- city_data %>%
   left_join(all_countries, by = c("country" = "keys"))
+human_rights <- human_rights %>%
+  left_join(all_countries, by = c("country" = "keys"))
 remove(all_countries)
 
 ## merge country-wise datasets
 country_codes <- country_codes %>%
   left_join(select(country_development, -country), by = "country_key") %>%
   left_join(select(dos_advice, -country), by = "country_key") %>%
-  select(region, country_iso, hdi, dos_level, dos_reason, country_key)
+  left_join(select(human_rights, -country), by = "country_key") %>%
+  select(region, country_iso, hdi, dos_level, dos_reason, human_rights,
+    country_key)
 
 ##  transfer missing travel advisories for territories from parent country
 territories <- tribble(
   ~territory, ~new_key,
   "PRI", "USA", "VIR", "USA", "GUM", "USA", "MNP", "USA", "ASM", "USA",
-  "MTQ", "FRA", "SPM", "FRA", "PYF", "FRA", "WLF", "FRA",
-  "JEY", "GBR", "IMN", "GBR", "PCN", "GBR",
+  "MTQ", "FRA", "SPM", "FRA", "PYF", "FRA", "WLF", "FRA", "GUF", "FRA",
+                "NCL", "FRA",
+  "JEY", "GBR", "IMN", "GBR", "PCN", "GBR", "BMU", "GBR", "CYM", "GBR",
+                "AIA", "GBR",
   "GRL", "DNK", "FRO", "DNK",
-  "NIU", "NZL",
-  "FLK", "ARG",
-  "ALA", "FIN",
-  "SMR", "ITA"
+  "NIU", "NZL", "FLK", "ARG", "ALA", "FIN", "SMR", "ITA", "ABW", "NLD"
   )
 
 territories <- left_join(country_codes, territories,
   by = c("country_iso" = "territory")) %>%
   select("country_iso", "new_key") %>%
   left_join(country_codes, by = c("new_key" = "country_iso")) %>%
-  select(country_iso, new_key, dos_level, hdi) %>%
-  rename("dos2" = dos_level, "hdi2" = hdi) %>%
+  select(country_iso, new_key, dos_level, hdi, human_rights) %>%
+  rename("dos2" = dos_level, "hdi2" = hdi, "hr2" = human_rights) %>%
   mutate(hdi2 = if_else(is.na(new_key), as.numeric(NA), hdi2))
 
 country_codes <- country_codes %>%
-  add_column(select(territories, dos2, hdi2)) %>%
+  add_column(select(territories, dos2, hdi2, hr2)) %>%
   mutate(dos_level = if_else(is.na(dos_level), dos2, dos_level)) %>%
   mutate(hdi = if_else(is.na(hdi), hdi2, hdi)) %>%
-  select(-dos2, -hdi2)
+  mutate(human_rights = if_else(is.na(human_rights), hr2, human_rights)) %>%
+  select(-dos2, -hdi2, -hr2)
 
 remove(territories)
 
