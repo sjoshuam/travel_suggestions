@@ -1,9 +1,5 @@
 ##########==========##########==========##########==========##########==========
 
-warning("TODO: ensure that colonies inherit hdi of parent country (script #3)")
-warning("TODO: create fallback for the pre-screen (script #4)")
-
-
 ## SET UP ==========
 
 ## meta-information
@@ -22,80 +18,117 @@ library(tidyverse)
 ## READ IN DATA ==========
 load("B_Intermediates/processed_data.RData")
 
-## CALCULATE REGIONAL AVERAGES AND PRE-SCREEN COUNTRIES ACCCORDINGLY ==========
+## CREATE PARSIMONIOUS STRUCTURED REGION LABELS ==========
+region_labels <- tribble(
+  ~region, ~region_short,
+  "Southern Asia",             "Asia South",
+  "Northern Europe",           "Europe North",
+  "Southern Europe",           "Europe South",
+  "Northern Africa",           "Africa North",
+  "Polynesia",                 "Oceania Polynesia",
+  "Middle Africa",             "Africa Middle",
+  "Caribbean",                 "America Caribbean",
+  "South America",             "America South",
+  "Western Asia",              "Asia West",
+  "Australia and New Zealand", "Oceania AUS/NZL",
+  "Western Europe",            "Europe West",
+  "Eastern Europe",            "Europe East",
+  "Central America",           "America Central",
+  "Western Africa",            "Africa West",
+  "Northern America",          "America North",
+  "Southern Africa",           "Africa South",
+  "South-eastern Asia",        "Asia Southeast",
+  "Eastern Africa",            "Africa East",
+  "Eastern Asia",              "Asia East",
+  "Micronesia",                "Oceania Micronesia",
+  "Melanesia",                 "Oceania Melanesia",
+  "Central Asia",              "Asia Central",
+  )
+country_data <- country_data %>%
+  left_join(region_labels, by = "region") %>%
+  mutate(region_name = region, region = region_short) %>%
+  select(-region_short)
+remove(region_labels)
 
-above_median <- select(country_data, region, country_key)
-notable_cities <- unnest(country_data, cols = notable_cities) %>%
-  select(region, country_key, city, capitol, population, heritage_sites,
-    lon, lat)
 
-## determine regional median human development index and state depart advice
-country_level <-  country_data %>%
-  group_by(region) %>%
-  summarize(dos_level = median(dos_level), hdi = median(hdi))
-above_median <- left_join(above_median, country_level, by = "region")
-remove(country_level)
+## CALCULATE REGIONAL MEDIANS AND SCORE COUNTRIES AGAINST REGION ==========
 
-## determine regional max/mean for population/heritage sites in notable cities
-city_level_country <- notable_cities %>%
+## score region norms for city_level indicators
+city_level <- country_data %>%
+  unnest(notable_cities) %>%
+  select(city, heritage_sites, population, country_key, region) %>%
   group_by(country_key) %>%
   summarize(
-    population = max(population),
-    heritage_sites = mean(heritage_sites)
+    region = unique(region),
+    population = max(population, na.rm = TRUE),
+    heritage_sites = sum(heritage_sites)
     )
-country_data <- bind_cols(country_data,
-  select(city_level_country, population, heritage_sites))
 
-city_level <- left_join(
-  select(notable_cities, region, country_key),
-  city_level_country, by = "country_key") %>%
+country_data <- left_join(country_data,
+  select(city_level, country_key, population, heritage_sites),
+  by = "country_key"
+  )
+remove(city_level)
+
+## temporally modify key variables to facilitate scoring
+country_data <- country_data %>%
+  mutate(
+    dos_level = 5 - dos_level,
+    population = log2(population)
+    )
+
+## score region norms for country-level indicators
+regional_norms <- country_data %>%
   group_by(region) %>%
   summarize(
-    "population" = median(population),
-    "heritage_sites" = median(heritage_sites)
+    region = unique(region),
+    hdi_score = median(hdi),
+    hdi_var = mad(hdi),
+    dos_score = median(dos_level),
+    dos_var = max(mad(dos_level), 0.5),
+    population_score = median(population),
+    population_var = mad(population),
+    heritage_score = median(heritage_sites),
+    heritage_var = max(mad(heritage_sites), 0.5)
     )
-above_median <- left_join(above_median, city_level, by = "region")
 
-remove(city_level, city_level_country, notable_cities)
+country_data <- left_join(country_data, regional_norms, by = "region")
+remove(regional_norms)
 
-## determine which countries are above the regional average on all measures
-above_median <- country_data %>%
-  mutate(
-    dos_level = dos_level <= pull(above_median, dos_level),
-    hdi = hdi >= pull(above_median, hdi),
-    population = population >= pull(above_median, population),
-    heritage_sites = heritage_sites >= pull(above_median, heritage_sites),
-    ) %>%
-  select(region, country_key, hdi, dos_level, population, heritage_sites) %>%
-  mutate("qualified" = hdi & dos_level & population & heritage_sites)
-
-## confirm that at least one country from each region passes pre-screening
-quality_check <- above_median %>%
-  group_by(region) %>%
-  summarize("qualifiers" = sum(qualified)) %>%
-  mutate("qualified" = qualifiers == 0)
-if (any(pull(quality_check, qualified))) {
-  warning("Pre-screening eliminated all candidates for > 0 regions")
-  print(filter(quality_check, qualified))
-} else {
-    remove(quality_check)
+## score each country against regional norms
+truncate_score <- function(x) {
+  pmin(pmax(x, -2), 2) / 2
   }
-above_median <- filter(above_median, qualified)
+country_data <- country_data %>%
+  mutate(
+    hdi_score = truncate_score((hdi - hdi_score) / hdi_var),
+    dos_score = truncate_score((dos_level - dos_score) / dos_var),
+  population_score = truncate_score(
+    (population - population_score) / population_var),
+    heritage_score = truncate_score(
+      (heritage_sites - heritage_score) / heritage_var)
+    ) %>%
+  select(-hdi_var, -dos_var, -population_var, -heritage_var) %>%
+  mutate(
+    composite_score = round(
+      hdi_score + dos_score + population_score + heritage_score, 3))
+remove(truncate_score)
 
-## DECIDE AMONG FINALISTS ==========
+## restore variables to unmodified states
+country_data <- country_data %>%
+  mutate(
+    dos_level = 5 - dos_level,
+    population = 2^population
+    )
 
-## drop country_data for non-finalists
-finalists <- filter(country_data,
-  country_key %in% pull(above_median, country_key))
-remove(above_median)
+## find top scoring countries for each region
+suggested_countries <- country_data %>%
+  group_by(region) %>%
+  slice_max(composite_score, n = 3) %>%
+  arrange(region) %>%
+  select(region, country_key, composite_score,
+    hdi, dos_level, population, heritage_sites, country_iso)
 
-## rank by hdi bracket, then population
-finalists <- finalists %>%
-  mutate(hdi_bracket = floor(hdi / 0.1) * 0.1) %>%
-  arrange(1 - hdi_bracket, 1 - population) %>%
-  filter(!duplicated(region))
-
-finalists
 ## PLOT WORLD MAP ==========
 
 ## PLOT SUGGESTED COUNTRIES FOR EACH REGION ==========

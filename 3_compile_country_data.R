@@ -33,15 +33,26 @@ heritage_sites <- readRDS("B_Intermediates/heritage_sites.RData")
 
 ## RESHAPE NEW COUNTRY DATASETS ==========
 
+
 ## simplify hdi dataset to most recent, relevant data
+backup_hdi <- country_development %>%
+  select(-`HDI Rank`, -`Country`) %>%
+  apply(2, as.numeric) %>%
+  rowMeans(na.rm= TRUE)
+
+
 country_development <- country_development %>%
   select(Country, "2017", "2018", "2019", "HDI Rank") %>%
- rename("country" = 1, "yr2017" = 2, "yr2018" = 3, "yr2019" = 4, "rank" = 5) %>%
+  rename("country" = Country, "yr2017" = `2017`, "yr2018" = `2018`,
+    "yr2019" = `2019`) %>%
+  add_column(backup = backup_hdi) %>%
   mutate(hdi = if_else(yr2019 == "..", yr2018, yr2019)) %>%
   mutate(hdi = if_else(hdi == "..", yr2017, hdi)) %>%
-  filter(!is.na(rank), hdi != "..") %>%
-  select(country, hdi) %>%
-  mutate(hdi = round(as.numeric(hdi), 3))
+  mutate(hdi = if_else(hdi == "..", as.character(backup), hdi)) %>%
+  mutate(hdi = round(as.numeric(hdi), 3)) %>%
+  filter(!is.na(hdi)) %>%
+  select(country, hdi)
+
 
 ## simplify country codes dataset to relevant data
 country_codes <- country_codes %>%
@@ -103,7 +114,7 @@ all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
   select(-address, -queries)
 
 ## fix mis-codes
-all_countries[all_countries$keys == "Réunion", "country_key"] <- "france"
+all_countries[all_countries$keys == "Réunion", "country_key"] <- "reunion"
 all_countries[all_countries$keys == "Namibia", "country_key"] <- "namibia"
 all_countries[all_countries$keys == "Georgia", "country_key"] <- "georgia"
 all_countries[all_countries$keys == "Holy See", "country_key"] <- "italy"
@@ -127,18 +138,6 @@ country_codes <- country_codes %>%
   left_join(select(dos_advice, -country), by = "country_key") %>%
   select(region, country_iso, hdi, dos_level, dos_reason, country_key)
 
-## interpolate missing hdi codes to regional average
-regional_hdi <- country_codes %>%
-  select(region, hdi) %>%
-  group_by(region) %>%
-  summarize("regional_hdi" = mean(hdi, na.rm = TRUE))
-
-country_codes <- country_codes %>%
-  left_join(regional_hdi, by = "region") %>%
-  mutate(hdi = if_else(is.na(hdi), regional_hdi, hdi)) %>%
-  select(-regional_hdi)
-remove(regional_hdi)
-
 ##  transfer missing travel advisories for territories from parent country
 territories <- tribble(
   ~territory, ~new_key,
@@ -156,14 +155,29 @@ territories <- left_join(country_codes, territories,
   by = c("country_iso" = "territory")) %>%
   select("country_iso", "new_key") %>%
   left_join(country_codes, by = c("new_key" = "country_iso")) %>%
-  select(country_iso, new_key, dos_level)
+  select(country_iso, new_key, dos_level, hdi) %>%
+  rename("dos2" = dos_level, "hdi2" = hdi) %>%
+  mutate(hdi2 = if_else(is.na(new_key), as.numeric(NA), hdi2))
 
 country_codes <- country_codes %>%
-  add_column(rename(select(territories, "dos_level"), "dos2" = "dos_level")) %>%
+  add_column(select(territories, dos2, hdi2)) %>%
   mutate(dos_level = if_else(is.na(dos_level), dos2, dos_level)) %>%
-  select(-dos2)
+  mutate(hdi = if_else(is.na(hdi), hdi2, hdi)) %>%
+  select(-dos2, -hdi2)
 
 remove(territories)
+
+## interpolate missing hdi codes to just below the regional median
+regional_hdi <- country_codes %>%
+  select(region, hdi) %>%
+  group_by(region) %>%
+  summarize("regional_hdi" = median(hdi, na.rm = TRUE) - 0.05)
+
+country_codes <- country_codes %>%
+  left_join(regional_hdi, by = "region") %>%
+  mutate(hdi = if_else(is.na(hdi), regional_hdi, hdi)) %>%
+  select(-regional_hdi)
+remove(regional_hdi)
 
 ## drop incomplete records
 country_data <- drop_na(country_codes, dos_level, hdi)
@@ -215,7 +229,6 @@ country_data <- left_join(country_data, top_cities, by = "country_key") %>%
   filter(!duplicated(country_key))
 remove(top_cities)
 
-## EXPORT FINAL DATASET ==========
 save(city_data, country_data, heritage_sites,
   file = "B_Intermediates/processed_data.RData")
 
