@@ -126,11 +126,26 @@ all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
   select(-address, -queries)
 
 ## fix mis-codes
-all_countries[all_countries$keys == "Réunion", "country_key"] <- "reunion"
-all_countries[all_countries$keys == "Namibia", "country_key"] <- "namibia"
-all_countries[all_countries$keys == "Georgia", "country_key"] <- "georgia"
-all_countries[all_countries$keys == "Holy See", "country_key"] <- "vatican"
-all_countries[all_countries$keys == "Jordan", "country_key"] <- "jordan"
+recode_list <- tribble(
+  ~find, ~replace,
+  "Curaçao",  "curacao",
+  "Georgia",  "georgia",
+  "Holy See", "vatican",
+  "Jordan",   "jordan",
+  "Namibia",  "namibia",
+  "Réunion",  "reunion",
+  "Togo",     "togo"
+  )
+recode_list <- all_countries %>%
+  select(keys) %>%
+  left_join(recode_list, by= c("keys" = "find"))
+
+all_countries <- all_countries %>%
+  bind_cols(select(recode_list, replace)) %>%
+  mutate("country_key" = if_else(is.na(replace), country_key, replace)) %>%
+  select(-replace)
+
+
 
 
 ## match google country keys to all country datasets

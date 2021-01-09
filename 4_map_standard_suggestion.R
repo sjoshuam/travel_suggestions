@@ -13,7 +13,9 @@
 remove(list = objects())
 options(width = 80, scipen = 2, digits = 6)
 library(lintr) # lint("4_map_standard_suggestion.R")
+library(mapproj)
 library(tidyverse)
+library(ggmap)
 
 ## READ IN DATA ==========
 load("B_Intermediates/processed_data.RData")
@@ -133,7 +135,7 @@ country_data <- country_data %>%
 ## find top scoring countries for each region
 suggested_countries <- country_data %>%
   group_by(region) %>%
-  slice_max(composite_score, n = 2) %>%
+  slice_max(composite_score, n = 1) %>%
   arrange(region) %>%
   select(country_key, composite_score,
     population, heritage_sites,
@@ -141,10 +143,154 @@ suggested_countries <- country_data %>%
     region, country_iso
     )
 
-## PLOT WORLD MAP ==========
+## PREPARE MAP FOR MAPPING ==========
 
-## PLOT SUGGESTED COUNTRIES FOR EACH REGION ==========
+## extract world map data; drop polar regions
+world_map <- map_data("world") %>%
+  as_tibble() %>%
+  filter(
+    region != "Antarctica",
+    tapply(lat, group, min)[group] < 70
+  ) %>%
+  rename(map_country_name = region) %>%
+  mutate(country_key = str_to_lower(map_country_name))
 
-## PLOT SUGGESTED CITIES FOR EACH COUNTRY ==========
+world_map$country_key <- recode(world_map$country_key ,
+  "swaziland" = "eswatini", "czech republic" = "czechia",
+  "ivory coast" = "côte d'ivoire",
+  "falkland islands" = "falkland islands (islas malvinas)",
+  "macedonia" = "north macedonia", "uk" = "united kingdom",
+  "bahamas" = "the bahamas", "tobago" = "trinidad and tobago",
+  "trinidad" = "trinidad and tobago", "gambia" = "the gambia",
+  "sao tome and principe" = "são tomé and príncipe",
+  "saint lucia" = "st lucia", "myanmar" = "myanmar (burma)",
+  "virgin islands" = "u.s. virgin islands", "usa" = "united states",
+  "micronesia" = "federated states of micronesia",
+  "saint pierre and miquelon" = "st pierre and miquelon"
+)
+
+world_map <- world_map %>%
+  left_join(select(country_data, country_key, region), by= "country_key") %>%
+  mutate(region = if_else(is.na(region), "Missing Data", region))
+
+## temporarily patch missing countries
+warning("This is a temporary patch")
+i <- match(
+  c("central african republic", "democratic republic of the congo",
+    "republic of congo", "libya", "sudan", "taiwan"), 
+  world_map$country_key)
+world_map[i, "region"] <- c(rep("Africa Middle", 3), rep("Africa North", 2),
+  rep("Asia East", 1))
+
+
+## project map to winkel-tripel
+winkel_tripel <- function(dat) {
+  
+  aitoff <- mapproject(x = dat$long, y= dat$lat,
+    projection = "aitoff", orientation = c(90, 0, 0))[c("x", "y")]
+
+  cylindrical <- mapproject(x = dat$long, y= dat$lat,
+    projection = "rectangular", orientation = c(90, 0, 0),
+    parameters = 50)[c("x", "y")]
+
+  wt <- (simplify2array(aitoff) + simplify2array(cylindrical)) / 2
+  colnames(wt) <- c("wt_long", "wt_lat")
+  dat <- bind_cols(dat, as_tibble(wt))
+  dat
+  }
+
+world_map <- winkel_tripel(world_map)
+
+## render map
+render_map <- ggplot(data = world_map) +
+  coord_fixed(xlim = c(-2, 2), ratio = 1) +
+  geom_polygon(
+    data = world_map,
+    mapping = aes(x = wt_long, y = wt_lat, group = group, fill = region,
+      color = region),
+    size = 0.08
+    )
+
+## adjust plot theme elements
+render_map <- render_map + theme(
+    panel.background = element_rect(
+      fill = hsv(h = 0.6, v = 0, s = 0.1),
+      color = hsv(h = 0.6, v = 0, s = 0.5)
+      ),
+    panel.grid = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank()
+    )
+
+## add color palette
+color_palette <- tibble(
+  "region"= c(sort(unique(country_data$region)), "Missing Data"),
+  "hue" = rep(seq(from = 0, to = 0.8, by = 0.2), times = 5)[1:23],
+  "sat" = 0.7,
+  "fill_val" = rep(c(0.2, 0.3, 0.3, 0.2, 0.3), times = 5)[1:23],
+  ) %>%
+  mutate(fill_color = hsv(hue, sat, fill_val)) %>%
+  mutate(color_color = hsv(hue, 1, 1)) %>%
+  mutate(fill_color =
+      if_else(region == "Missing Data", gray(0.2), fill_color)) %>%
+  mutate(color_color =
+      if_else(region == "Missing Data", gray(0.8), color_color))
+
+i <- which(color_palette$region %in% c("Asia Central", "America North"))
+color_palette[i, "region"] <- color_palette[rev(i), "region"]
+remove(i)
+
+render_map <- render_map +
+  scale_fill_manual(
+    values = set_names(color_palette$fill_color, color_palette$region),
+    guide = FALSE) +
+  scale_color_manual(
+    values = set_names(color_palette$color_color, color_palette$region),
+    guide = FALSE)
+
+## add labels for selected countries
+selected_labels <- world_map %>%
+  group_by(group) %>%
+  summarize(
+    "country_key" = unique(country_key),
+    long_max = max(wt_long),
+    long_min = min(wt_long),
+    lat_max = max(wt_lat),
+    lat_min = min(wt_lat),
+    points = length(wt_long)
+    ) %>%
+  arrange(country_key, -points) %>%
+  filter(!duplicated(country_key)) %>%
+  mutate(
+    long = (long_max + long_min) / 2,
+    lat  = (lat_max + lat_min) / 2,
+    ) %>%
+  select(country_key, long, lat) %>%
+  filter(country_key %in% suggested_countries$country_key) %>%
+  left_join(select(suggested_countries, country_key, region),
+    by = "country_key") %>%
+  left_join(select(color_palette, region, color_color), by = "region")
+  
+
+i <- match(c("netherlands", "poland", "new caledonia"),
+  selected_labels$country_key)
+selected_labels[i, "long"] <- selected_labels[i, "long"] + c(-0.1, 0.1, 0.1) / 2
+remove(i)
+
+render_map <- render_map + geom_label(
+  data = selected_labels,
+  mapping = aes(long, lat, label = str_to_title(country_key)),
+  size = 1.5,
+  label.padding = unit(0.1, "lines"),
+  color = selected_labels$color_color,
+  fill = "#000000CC"
+  )
+#remove(selected_labels)
+
+##
+pdf("C_Outputs/travel_suggestions_generic.pdf", width = 6, height = 6 / 1.9)
+render_map
+graphics.off()
 
 ##########==========##########==========##########==========##########==========
