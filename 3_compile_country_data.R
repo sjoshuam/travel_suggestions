@@ -31,6 +31,7 @@ human_rights <-  read_xlsx("A_Inputs/human_rights.xlsx", skip = 1)
 city_data <- readRDS("B_Intermediates/city_data.RData")
 dos_advice <- readRDS("B_Intermediates/dos_advice.RData")
 heritage_sites <- readRDS("B_Intermediates/heritage_sites.RData")
+speaks_english <- readRDS("B_Intermediates/speaks_english.RData")
 
 ## RESHAPE NEW COUNTRY DATASETS ==========
 
@@ -99,7 +100,8 @@ all_countries <- c(
   pull(country_codes, country_name),
   pull(dos_advice, country),
   pull(city_data, country),
-  pull(human_rights, country)
+  pull(human_rights, country),
+  pull(speaks_english, country)
   )
 all_countries <- unique(sort(all_countries))
 
@@ -129,12 +131,17 @@ all_countries <- readRDS("B_Intermediates/countries_geocode_cache.RData") %>%
 recode_list <- tribble(
   ~find, ~replace,
   "Curaçao",  "curacao",
+  "curacao",  "curacao",
   "Georgia",  "georgia",
+  "georgia",  "georgia",
   "Holy See", "vatican",
   "Jordan",   "jordan",
+  "jordan",   "jordan",
   "Namibia",  "namibia",
+  "namibia",  "namibia",
   "Réunion",  "reunion",
-  "Togo",     "togo"
+  "Togo",     "togo",
+  "togo",     "togo"
   )
 recode_list <- all_countries %>%
   select(keys) %>%
@@ -145,8 +152,10 @@ all_countries <- all_countries %>%
   mutate("country_key" = if_else(is.na(replace), country_key, replace)) %>%
   select(-replace)
 
-
-
+## express failed searches
+if (!options()$load_cached_geocode) {
+  View(filter(all_countries, country_key == "usa"))
+}
 
 ## match google country keys to all country datasets
 country_development <- country_development %>%
@@ -159,6 +168,8 @@ city_data <- city_data %>%
   left_join(all_countries, by = c("country" = "keys"))
 human_rights <- human_rights %>%
   left_join(all_countries, by = c("country" = "keys"))
+speaks_english <- speaks_english %>%
+  left_join(all_countries, by = c("country" = "keys"))
 remove(all_countries)
 
 ## merge country-wise datasets
@@ -166,8 +177,10 @@ country_codes <- country_codes %>%
   left_join(select(country_development, -country), by = "country_key") %>%
   left_join(select(dos_advice, -country), by = "country_key") %>%
   left_join(select(human_rights, -country), by = "country_key") %>%
+  left_join(select(speaks_english, -country), by = "country_key") %>%
+  mutate(speaks_english = if_else(is.na(speaks_english), 0, speaks_english)) %>%
   select(region, country_iso, hdi, dos_level, dos_reason, human_rights,
-    country_key)
+    speaks_english, country_key)
 
 ##  transfer missing travel advisories for territories from parent country
 territories <- tribble(

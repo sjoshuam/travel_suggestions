@@ -93,7 +93,9 @@ regional_norms <- country_data %>%
     heritage_score = median(heritage_sites),
     heritage_var = max(mad(heritage_sites), 0.5),
     rights_score = median(human_rights),
-    rights_var = max(mad(human_rights), 0.5)
+    rights_var = max(mad(human_rights), 0.5),
+    english_score = median(speaks_english),
+    english_var = max(mad(speaks_english), 0.5)
     )
 
 country_data <- left_join(country_data, regional_norms, by = "region")
@@ -112,16 +114,20 @@ country_data <- country_data %>%
     heritage_score = truncate_score(
       (heritage_sites - heritage_score) / heritage_var),
     rights_score = truncate_score(
-      (human_rights - rights_score) / rights_var)
+      (human_rights - rights_score) / rights_var),
+    english_score = truncate_score(
+      (speaks_english - english_score) / english_var)
     ) %>%
-  select(-hdi_var, -dos_var, -population_var, -heritage_var, -rights_var) %>%
+  select(-hdi_var, -dos_var, -population_var, -heritage_var, -rights_var,
+    -english_var) %>%
   mutate(
     composite_score = round(
       population_score * 0.25 +
       heritage_score   * 0.25 +
-      dos_score        * 0.18 +
-      hdi_score        * 0.16 +
-      rights_score     * 0.16,
+      dos_score        * 0.14 +
+      hdi_score        * 0.13 +
+      rights_score     * 0.13 +
+      english_score    * 0.10,
       3))
 remove(truncate_score)
 
@@ -202,7 +208,7 @@ winkel_tripel <- function(dat) {
 world_map <- winkel_tripel(world_map)
 
 ## render map
-render_map <- ggplot(data = world_map) +
+generic_map <- ggplot(data = world_map) +
   coord_fixed(xlim = c(-2, 2), ratio = 1) +
   geom_polygon(
     data = world_map,
@@ -212,7 +218,7 @@ render_map <- ggplot(data = world_map) +
     )
 
 ## adjust plot theme elements
-render_map <- render_map + theme(
+generic_map <- generic_map + theme(
     panel.background = element_rect(
       fill = hsv(h = 0.6, v = 0, s = 0.1),
       color = hsv(h = 0.6, v = 0, s = 0.5)
@@ -241,7 +247,7 @@ i <- which(color_palette$region %in% c("Asia Central", "America North"))
 color_palette[i, "region"] <- color_palette[rev(i), "region"]
 remove(i)
 
-render_map <- render_map +
+generic_map <- generic_map +
   scale_fill_manual(
     values = set_names(color_palette$fill_color, color_palette$region),
     guide = FALSE) +
@@ -273,12 +279,12 @@ selected_labels <- world_map %>%
   left_join(select(color_palette, region, color_color), by = "region")
   
 
-i <- match(c("netherlands", "poland", "new caledonia"),
+i <- match(c("netherlands", "poland"),
   selected_labels$country_key)
-selected_labels[i, "long"] <- selected_labels[i, "long"] + c(-0.1, 0.1, 0.1) / 2
+selected_labels[i, "long"] <- selected_labels[i, "long"] + c(-0.1, 0.1) / 2
 remove(i)
 
-render_map <- render_map + geom_label(
+generic_map <- generic_map + geom_label(
   data = selected_labels,
   mapping = aes(long, lat, label = str_to_title(country_key)),
   size = 1.5,
@@ -290,7 +296,9 @@ render_map <- render_map + geom_label(
 
 ##
 pdf("C_Outputs/travel_suggestions_generic.pdf", width = 6, height = 6 / 1.9)
-render_map
+generic_map
 graphics.off()
+
+save(generic_map, file = "B_Intermediates/generic_map.RData")
 
 ##########==========##########==========##########==========##########==========
