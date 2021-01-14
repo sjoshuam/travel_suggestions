@@ -35,11 +35,15 @@ This project is a work in progress.  To-dos (in priority order) include:
 
 2. PROJECT SUMMARY - Flesh out the "Findings" section.
 
-2. SCRIPT #6 - Develop an Rshiny interface so that users can generate customized recommendations.
+3. SCRIPT #6 - Develop an Rshiny interface so that users can generate customized recommendations.
 
-3. APPENDIX B - Write detailed analysis of the results.
+4. GITHUB - Switch project over to new authentication method.
 
-4. APPENDIX A - Write a detailed procedural how-to guide.
+5. README - Proof-read README.
+
+6. APPENDIX B - Write detailed analysis of the results.
+
+7. APPENDIX A - Write a detailed procedural how-to guide.
 
 \vspace{0.05in}
 ### Approach: Select Countries Based on Points of Interest, Ease of Travel, and Geographic Region
