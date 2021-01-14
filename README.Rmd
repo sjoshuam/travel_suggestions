@@ -1,0 +1,166 @@
+---
+  title: Travel the World - A Itenerary of Travel Destinations for an Aspiring World Traveler
+  date: 2021-01-14 (Last Update)
+  bibliography: D_Misc/travel_suggestions.bib
+  output: pdf_document
+---
+
+\sffamily
+
+```{R environment set-up, include=FALSE}
+remove(list = objects())
+library(tidyverse)
+```
+
+```{R figure 1, echo = FALSE}
+load("B_Intermediates/generic_map.RData")
+generic_map
+```
+
+
+## Project Summary
+
+\vspace{0.05in}
+### Project Goal: Develop a Slate of Travel Recommendations for "Traveling the World"
+
+Like many people, I want to see the world.  However, the world is a big place -- 7.7 billion people ^[@Census2021Po] in 193 UN member states ^[@UN2021Li] spread across 57.5 million square miles of land ^[@CIA2021Wo] -- so no one could possibly see it all.  The next best option is to visit a diverse and representative sample of the world.  This project develops a slate of travel recommendations to support that goal.
+
+This README file summarizes the project in three sections.  The first section "Approach" describes the evaluation criteria that the project uses to generate travel recommendations.  The second section "Findings" reports the travel recommendations generated.  The third section "Repository Guide" holds a guide to the scripts, data and general layout of this project -- traditional programmer README documentation.
+
+#### Opportunities for Future Development
+
+This project is a work in progress.  To-dos (in priority order) include:
+
+1. PROJECT SUMMARY - Write the "Repository Guide" section.
+
+2. PROJECT SUMMARY - Flesh out the "Findings" section.
+
+2. SCRIPT #6 - Develop an Rshiny interface so that users can generate customized recommendations.
+
+3. APPENDIX B - Write detailed analysis of the results.
+
+4. APPENDIX A - Write a detailed procedural how-to guide.
+
+\vspace{0.05in}
+### Approach: Select Countries Based on Points of Interest, Ease of Travel, and Geographic Region
+
+To make the slate, I use available data sources to evaluate potential destinations according to three criteria:
+
+1. What locations have points of interest for a tourist like myself?  I define points of interest to include large cities, natural wonders, and culturally / historically significant sites.
+
+2. What locations are easily traveled for a tourist like myself? I define easily traveled to include safety, respect for human rights, abundant English-speakers, and good societal infrastructure.
+
+3. Relative to other countries in the region, which countries score highest on the first two criteria?  I divide the world into regions and evaluate each country against the other countries in its region.
+
+Table 1 provides a detailed breakdown of the evaluation criteria.
+
+\vspace{0.05in}
+\begin{center}
+Table 1: Country Selection Criteria
+\end{center}
+
+|Criteria|Sub-Criteria|Measure|Importance
+|:--|:-----|:-----|:-
+|Location has tourist points of interest (scored at the city-level)|||
+||• Large Cities|Metropolitan Population|25%
+||• Cultural / Natural Sites|UNESCO World Heritage Sites|25%
+|Location is easily traveled (scored at the country / territory level)|||
+||• Safety|US State Dept. Travel Advisories|15%
+||• Respect for Human Rights|Global Freedom Scores|15%
+||• English Speakers|Anglophone Population (Percent)|10%
+||• Socio-Economic Infrastructure|Inequality-Adjusted Human Development Index|10%
+|Location is the region's best option|||
+||• Definition of World Regions| UN M49 Region Typology|N/A
+
+For the "location is easily traveled" criteria, the project uses country-level scores that measure different features of countries.^[Where possible, the project treats distant territories of countries as separate entities because they typically offer a unique cultural / regional experience, relative to their metropole.]  For the "tourist points of interest" criteria, the project selects a slate of up to three cities and scores features of those cities.  This narrows down potential travel itineraries to a manageable number of destinations, especially in countries with a large amount of land area.  Here are the selection criteria for each country's cities.
+
+1. The capitol city of the country. For countries with multiple capitol cities, the criteria favor the capitol city with the largest population.
+
+2. The largest city of a country, based on the total population of its metropolitan area.
+
+3.  The city with the most UNESCO World Heritage sites within a 50 kilometer (31 mile) radius.
+
+In many cases, the capitol, largest city, and / or city near the most sites are the same city, so the project selects less than three cities.  
+
+\vspace{0.05in}
+### Findings: A Twenty-Two Country, Thirty-Six City Slate of Travel Recommendations
+
+Table 2 presents the full list of countries and cities selected.  Appendix A provides the full list of heritage sites for each country.
+
+\vspace{0.05in}
+\begin{center}
+Table 2: Countries and Cities Selected
+\end{center}
+
+Region          |Country      |Cities
+|:-|:-|:-|:-
+Africa North    |Morocco      |Rabat • Casablanca • Meknès
+Africa West     |Ghana        |Accra • Kumasi
+Africa Middle   |Angola       |Luanda • M'banza-Kongo
+Africa East     |Mauritius    |Port Louis
+Africa South    |South Africa |Pretoria • Johannesburg • Cape Town
+|||
+America North     |Canada         |Ottawa • Toronto
+America Central   |Mexico         |Mexico City
+America Caribbean |Puerto Rico    |San Juan
+America South     |Peru           |Lima • Huaraz
+|||
+Asia Central    |Uzbekistan   |Tashkent • Samarkand
+Asia East       |South Korea  |Seoul
+Asia South      |India        |Mumbai • Agra
+Asia Southeast  |Singapore    |Singapore
+Asia West       |Israel       |Jerusalem
+|||
+Europe North    |Sweden       |Stockholm
+Europe West     |Netherlands  |Amsterdam • Almere
+Europe East     |Poland       |Warsaw • Kraków
+Europe South    |Italy        |Rome
+|||
+Oceania Micronesia    |Palau          |Koror
+Oceania AUS/NZL       |Australia      |Canberra • Sydney
+Oceania Melanesia     |New Caledonia  |Noumea
+Oceania Polynesia     |American Samoa |Pago Pago • Tafuna
+
+### Repository Guide:
+
+\vfill
+## Appendix A: Procedure For Generating 
+
+## Appendix B: Full List of Suggested Countries, Cities, and Heritage Sites
+
+Region|Country|Cities|Heritage Sites
+|:-|:-|:-|:-
+||||
+**Africa**|||
+Africa East|Mauritius|Port Louis|Aapravasi Ghat • Le Morne Cultural Landscape
+Africa Middle|Angola|Luanda • M'banza-Kongo|Capital of the former Kingdom of Kongo
+Africa North|Morocco|Rabat • Casablanca • Meknès|Historic City of Rabat • Historic City of Meknes • Volubilis Archaeological Site 
+Africa South|South Africa|Pretoria • Johannesburg • Cape Town|Robben Island • Cape Floral Region Protected Areas
+Africa West|Ghana|Accra • Kumasi|Accra Forts and Castles • Asante Traditional Buildings
+||||
+**Americas**|||
+America Caribbean|Puerto Rico|San Juan|La Fortaleza • San Juan National Historic Site
+America Central|Mexico|Mexico City|Mexico City Historic Center • Xochimilco • Teotihuacan Pre-Hispanic City • Luis Barragán House and Studio • UNAM Central University City Campus 
+America North|Canada|Ottawa • Toronto|Rideau Canal
+America South|Peru|Lima • Huaraz|Lima Historic Center • Chavin (Archaeological Site) • Huascarán National Park
+||||
+**Asia**|||
+Asia Central|Uzbekistan|Tashkent • Samarkand|Sarazm Proto-urban Site • Samarkand  Historic City
+Asia East|South Korea|Seoul|Jongmyo Shrine • Changdeokgung Palace Complex • Hwaseong Fortress • Namhansanseong
+Asia South|India|Mumbai • Agra|Elephanta Caves • Chhatrapati Shivaji Terminus • Mumbai Victorian Gothic and Art Deco Ensembles • Agra Fort • Taj Mahal • Fatehpur Sikri • Keoladeo National Park
+Asia Southeast|Singapore|Singapore|Singapore Botanic Gardens
+Asia West|Israel|Jerusalem|Caves of Maresha and Bet-Guvrin • Jerusalem Old City • Al-Maghtas Baptism Site • Church of the Nativity and  Pilgrimage Route, Bethlehem • Cultural Landscape of Southern Jerusalem, Battir • Hebron/Al-Khalil Old Town
+||||
+**Europe**|||
+Europe East|Poland|Warsaw • Kraków|Warsaw Historic Center • Kraków Historic Center • Wieliczka / Bochnia Royal Salt Mines • Kalwaria Zebrzydowska Park
+Europe North|Sweden|Stockholm|Birka • Hovgården • Skogskyrkogården • Drottningholm Royal Domain
+Europe South|Italy|Rome|Vatican City • Villa Adriana, Tivoli • Villa d'Este, Tivoli • Cerveteri Etruscan Necropolises • Tarquinia • Rome Historic Centre • Catholic Religious Sites • San Paolo Fuori le Mura
+Europe West|Netherlands|Amsterdam • Almere|Amsterdam Defence Line • Beemster Polder • Rietveld Schröder House • Amsterdam Singelgracht Canal Ring Area • Schokland and Surroundings
+||||
+**Oceania**|||
+Oceania AUS/NZL|Australia|Canberra • Sydney|Sydney Opera House
+Oceania Melanesia|New Caledonia|Noumea|NA
+Oceania Micronesia|Palau|Koror|Rock Islands Southern Lagoon
+Oceania Polynesia|American Samoa|Pago Pago • Tafuna|
+
+## Appendix C: References

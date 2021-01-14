@@ -124,9 +124,9 @@ country_data <- country_data %>%
     composite_score = round(
       population_score * 0.25 +
       heritage_score   * 0.25 +
-      dos_score        * 0.14 +
-      hdi_score        * 0.13 +
-      rights_score     * 0.13 +
+      dos_score        * 0.15 +
+      rights_score     * 0.15 +
+      hdi_score        * 0.10 +
       english_score    * 0.10,
       3))
 remove(truncate_score)
@@ -281,14 +281,14 @@ selected_labels <- world_map %>%
 
 i <- match(c("netherlands", "poland"),
   selected_labels$country_key)
-selected_labels[i, "long"] <- selected_labels[i, "long"] + c(-0.1, 0.1) / 2
+selected_labels[i, "long"] <- selected_labels[i, "long"] + c(-0.1, 0.1)
 remove(i)
 
 generic_map <- generic_map + geom_label(
   data = selected_labels,
   mapping = aes(long, lat, label = str_to_title(country_key)),
-  size = 1.5,
-  label.padding = unit(0.1, "lines"),
+  size = 2.0,
+  label.padding = unit(0.2, "lines"),
   color = selected_labels$color_color,
   fill = "#000000CC"
   )
@@ -300,5 +300,64 @@ generic_map
 graphics.off()
 
 save(generic_map, file = "B_Intermediates/generic_map.RData")
+remove(winkel_tripel, selected_labels, color_palette, generic_map, world_map)
+
+## PACKAGE SELECTED COUNTRIES FOR RESULTS TABLE
+
+## extract selected countries from country_data
+output_table <- country_data %>%
+  filter(country_key %in% suggested_countries$country_key) %>%
+  arrange(region) %>%
+  select(region, country_key, notable_cities)
+
+## extract heritage sites
+output_table <- output_table %>%
+  mutate("heritage_sites" = notable_cities)
+output_table$heritage_sites <- output_table$heritage_sites %>%
+  lapply(pull, heritage_key)
+
+## extract city names
+output_table$notable_cities <- output_table$notable_cities %>%
+  lapply(pull, city) %>%
+  sapply(paste, collapse = " • ") %>%
+  str_to_title() #%>%
+  #str_replace_all("&Nbsp;", "&nbsp;")
+
+output_table$country_key <- str_to_title(output_table$country_key)
+
+## add heritage sites
+heritage_output <-  setNames(output_table$heritage_sites,
+  nm = output_table$country_key) %>%
+  lapply(unlist)
+
+heritage_output <- tibble(
+  "country_key" = rep(names(heritage_output), sapply(heritage_output, length)),
+  "prim_key" = unlist(heritage_output)
+  ) %>%
+  left_join(select(heritage_sites, prim_key, name_en))
+
+heritage_output <-  tapply(heritage_output$name_en,
+  heritage_output$country_key,
+  paste, collapse = " • ") %>%
+  enframe(name = "country_key", value = "heritage_sites")
+
+output_table <- output_table %>%
+  select(-heritage_sites) %>%
+  left_join(heritage_output, by = "country_key")
+
+## write table in raw markdown format
+output_table <- paste(
+  output_table$region,
+  output_table$country_key,
+  output_table$notable_cities,
+  output_table$heritage_sites,
+  sep = "|"
+  )
+
+output_table <- c("Region|Country|Cities|Heritage Sites",
+  "|:-|:-|:-|:-",
+  output_table)
+write_lines(output_table, file = "C_Outputs/travel_suggestions_generic.txt")
+  
 
 ##########==========##########==========##########==========##########==========
