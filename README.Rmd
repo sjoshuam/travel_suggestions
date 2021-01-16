@@ -1,18 +1,22 @@
 ---
-  title: Travel the World - A Itenerary of Travel Destinations for an Aspiring World Traveler
-  date: 2021-01-14 (Last Update)
+  title: Travel the World - An Itinerary of Travel Destinations for an Aspiring World Traveler
+  date: 2021-01-15 (Last Update)
   bibliography: D_Misc/travel_suggestions.bib
   output: pdf_document
 ---
 
+```{R redirect, eval=FALSE, include=FALSE}
+IF YOU CAN READ THIS, YOU ARE READING THE RAW .RMD FILE.  PLEASE READ THE .PDF VERSION INSTEAD
+```
+
 \sffamily
 
-```{R environment set-up, include=FALSE}
+```{R environment set up, include=FALSE}
 remove(list = objects())
 library(tidyverse)
 ```
 
-```{R figure 1, echo = FALSE}
+```{R figure 1, echo=FALSE}
 load("B_Intermediates/generic_map.RData")
 generic_map
 ```
@@ -25,25 +29,25 @@ generic_map
 
 Like many people, I want to see the world.  However, the world is a big place -- 7.7 billion people ^[@Census2021Po] in 193 UN member states ^[@UN2021Li] spread across 57.5 million square miles of land ^[@CIA2021Wo] -- so no one could possibly see it all.  The next best option is to visit a diverse and representative sample of the world.  This project develops a slate of travel recommendations to support that goal.
 
-This README file summarizes the project in three sections.  The first section "Approach" describes the evaluation criteria that the project uses to generate travel recommendations.  The second section "Findings" reports the travel recommendations generated.  The third section "Repository Guide" holds a guide to the scripts, data and general layout of this project -- traditional programmer README documentation.
+This README file summarizes the project in three sections.  The first section "Approach" describes the evaluation criteria that the project uses to generate travel recommendations.  The second section "Findings" reports the travel recommendations generated.  The third section "Repository Guide" holds a guide to the scripts, data, and general layout of this project -- traditional programmer README documentation.  The appendices provide additional information on the methods, findings, and sources respectively.
 
 #### Opportunities for Future Development
 
 This project is a work in progress.  To-dos (in priority order) include:
 
-1. PROJECT SUMMARY - Write the "Repository Guide" section.
+1. PROJECT SUMMARY - Flesh out the "Findings" section.
 
-2. PROJECT SUMMARY - Flesh out the "Findings" section.
+2. SCRIPT #5 - Develop an Rshiny tool so that users can generate customized recommendations.
 
-3. SCRIPT #6 - Develop an Rshiny interface so that users can generate customized recommendations.
+3. PROJECT SUMMARY - Finish the "Repository Guide" section.
 
 4. GITHUB - Switch project over to new authentication method.
 
-5. README - Proof-read README.
+5. APPENDIX B - Write detailed analysis of the results.
 
-6. APPENDIX B - Write detailed analysis of the results.
+6. APPENDIX A - Write a detailed procedural how-to guide.
 
-7. APPENDIX A - Write a detailed procedural how-to guide.
+7. README - Proof-read README.
 
 \vspace{0.05in}
 ### Approach: Select Countries Based on Points of Interest, Ease of Travel, and Geographic Region
@@ -52,7 +56,7 @@ To make the slate, I use available data sources to evaluate potential destinatio
 
 1. What locations have points of interest for a tourist like myself?  I define points of interest to include large cities, natural wonders, and culturally / historically significant sites.
 
-2. What locations are easily traveled for a tourist like myself? I define easily traveled to include safety, respect for human rights, abundant English-speakers, and good societal infrastructure.
+2. What locations can a tourist like myself easily travel?  I define easily traveled to include safety, respect for human rights, abundant English-speakers, and good societal infrastructure.
 
 3. Relative to other countries in the region, which countries score highest on the first two criteria?  I divide the world into regions and evaluate each country against the other countries in its region.
 
@@ -63,28 +67,28 @@ Table 1 provides a detailed breakdown of the evaluation criteria.
 Table 1: Country Selection Criteria
 \end{center}
 
-|Criteria|Sub-Criteria|Measure|Importance
-|:--|:-----|:-----|:-
-|Location has tourist points of interest (scored at the city-level)|||
-||• Large Cities|Metropolitan Population|25%
-||• Cultural / Natural Sites|UNESCO World Heritage Sites|25%
-|Location is easily traveled (scored at the country / territory level)|||
-||• Safety|US State Dept. Travel Advisories|15%
-||• Respect for Human Rights|Global Freedom Scores|15%
-||• English Speakers|Anglophone Population (Percent)|10%
-||• Socio-Economic Infrastructure|Inequality-Adjusted Human Development Index|10%
-|Location is the region's best option|||
-||• Definition of World Regions| UN M49 Region Typology|N/A
+|Criteria   |Sub-Criteria   |Measure    |Importance   |Source
+|:----    |:-----   |:-----   |:-   |:-
+|**Location has tourist points of interest**    |**(scored at the city-level)**   ||
+|   |• Large Cities   |Metropolitan Population    |25%    |^[@UNSD2019Ta]
+|   |• Cultural / Natural Sites |UNESCO World Heritage Sites  |25%    |^[@UNESCO2020Wo]
+|**Location is easily traveled**    |**(scored at the country-level)**||
+|   |• Safety   |US State Dept. Travel Advisories   |15%    |^[@DoS2021Tr]
+|   |• Respect for Human Rights |Global Freedom Scores    |15%    |^[@Freedom-House2020Fr]
+|   |• English Speakers   |Anglophone Population (Percent)    |10%    |^[@Wikipedia2021Li]
+|   |• Socio-Economic Infrastructure|Inequality-Adjusted Human Development Index|10%   |^[@UNDP2020In]
+|**Location is the region's best option**|**(stratifies countries)**||
+|   |• Definition of World Regions    |UN M49 Region Typology    |N/A   |^[@UNSD2021St]
 
 For the "location is easily traveled" criteria, the project uses country-level scores that measure different features of countries.^[Where possible, the project treats distant territories of countries as separate entities because they typically offer a unique cultural / regional experience, relative to their metropole.]  For the "tourist points of interest" criteria, the project selects a slate of up to three cities and scores features of those cities.  This narrows down potential travel itineraries to a manageable number of destinations, especially in countries with a large amount of land area.  Here are the selection criteria for each country's cities.
 
-1. The capitol city of the country. For countries with multiple capitol cities, the criteria favor the capitol city with the largest population.
+1. The capital city of the country.  For countries with multiple capital cities, the criteria favor the capital city with the largest population.
 
 2. The largest city of a country, based on the total population of its metropolitan area.
 
-3.  The city with the most UNESCO World Heritage sites within a 50 kilometer (31 mile) radius.
+3.  The city with the most UNESCO World Heritage sites within a 50-kilometer (31 mile) radius.
 
-In many cases, the capitol, largest city, and / or city near the most sites are the same city, so the project selects less than three cities.  
+In many cases, the capital city, largest city, and / or city near the most sites are the same city, so the project selects less than three cities.  
 
 \vspace{0.05in}
 ### Findings: A Twenty-Two Country, Thirty-Six City Slate of Travel Recommendations
@@ -127,10 +131,35 @@ Oceania Polynesia     |American Samoa |Pago Pago • Tafuna
 
 ### Repository Guide:
 
-\vfill
-## Appendix A: Procedure For Generating 
+This project consists of five .R scripts.
 
-## Appendix B: Full List of Suggested Countries, Cities, and Heritage Sites
+**1_scrape_website.R** - Refines data on State Department travel advisories and percentage of English-speakers in each country.  
+
++ Scrapes source data from the State Department's travel advisory RSS feed and from a table on the relevant Wikipedia^[TODO: Find a better source if practical] page.  Saves refined data to dos_advice.RData and speaks_english.RData in the B_Intermediates directory.
+
+**2_compile_city_data.R** - Refines United Nations data on city population and world heritage site locations.
+
++ Reads in city_population.xlsx and world_heritage.xlsx data files from the A_Inputs directory and saves refined data to B_Intermediates as city_data.RData and heritage_sites.RData.
+
++ Queries Google's geocoding API to determine the geographic coordinates of the cities.  If options(load_cached_geocode) is set to TRUE (default), script use a cached version of that query, rather than re-querying the server.  The cache saves at B_Intermediates/geocode_cache.RData.  Google's API requires a key.  The script uses source() to register this key using a script not included in this repository.  You will need to replace this line with your own key to run this project.
+
+**3_compile_country_data.R** - Refines country-level datasets, including United Nations' M49 geographic region codes, United Nations' Inequality-Adjusted Human Development Index countries scores and Freedom House's Human / Civil Rights scores.  Also merges these datasets and the datasets refined in the previous two scripts into a unified whole.
+
++ Reads in country_codes.xlsx, country_development.xlsx, and human_rights.xlsx from the A_Inputs directory, as well as dos_advice.RData, speaks_english.RData, heritage_sites.RDdata, city_data.RData from B_Intermediates.  Outputs B_Intermediates/processed_data.RData, which contains the final country_data, city_data, and heritage_sites datasets
+
++ Queries Google's geocoding API to generate standardized country names for the country-level datasets, so that the script can merge them.  If options(load_cached_geocode) is set to TRUE (default), script use a cached version of that query, rather than re-querying the server.  The cache is saved as B_Intermediates/countries_geocode_cache.RData.  Google's API requires a key.  The script uses source() to register this key using a script not included in this repository.  You will need to replace this line with your own key to run this project.
+
+**4_map_standard_suggestion.R** - Scores each country according to the criteria described in table 1; visualizes the results as the figure shown at the start of this document.
+
++ Reads in B_Intermediates/processed_data.RData and outputs the suggested travel itinerary in three formats: C_Outputs/travel_suggestions_generic.pdf (visualization), B_Intermediates/generic_map.RData (visualization ggplot object), and C_Outputs/travel_suggestions_generic.txt (table of full results, formatted so that one can paste it into an Rmarkdown document).
+
+**5_travel_suggestion_tool.R** - NOT YET WRITTEN.  Tool will enable users to generate custom travel recommendations.
+
+\newpage
+## Appendix A: Procedure For Generating the Travel Itinerary
+
+\newpage
+## Appendix B: Detailed Travel Itinerary Findings and Analysis
 
 Region|Country|Cities|Heritage Sites
 |:-|:-|:-|:-
@@ -167,4 +196,5 @@ Oceania Melanesia|New Caledonia|Noumea|NA
 Oceania Micronesia|Palau|Koror|Rock Islands Southern Lagoon
 Oceania Polynesia|American Samoa|Pago Pago • Tafuna|
 
+\newpage
 ## Appendix C: References
