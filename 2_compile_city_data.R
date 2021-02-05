@@ -11,7 +11,7 @@
 
 ## environment set-up
 remove(list = objects())
-options(load_cached_geocode = TRUE, width = 80, digits = 6)
+options(load_cached_geocode = FALSE, width = 80, digits = 6)
 library(sp)
 library(readxl)
 library(ggmap)
@@ -91,11 +91,12 @@ remove(city_geocodes)
 
 ## FIND HERITAGE SITES NEAR EACH CITY ==========
 
-## do basic cleaning
+## do basic cleaning and list to cultural sites
 heritage_sites <- heritage_sites %>%
   mutate("country" = udnp_code) %>%
   select(name_en, category, longitude, latitude, country, prim_key) %>%
-  drop_na(longitude, latitude)
+  drop_na(longitude, latitude) %>%
+  filter(category %in% c("Cultural", "Mixed"))
 
 ## calculate distances
 nearby_sites <- spDists(
@@ -105,7 +106,7 @@ nearby_sites <- spDists(
   )
 
 ## find world heritage sites near each city
-nearby_sites <- apply(nearby_sites <= 50, 1, which) %>%
+nearby_sites <- apply(nearby_sites <= 32, 1, which) %>%
   lapply(function(x) {
     heritage_sites[x, "prim_key"]}) %>%
   enframe(value = "heritage_key") %>%

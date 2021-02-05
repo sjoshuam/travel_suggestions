@@ -11,8 +11,9 @@
 
 ## environmental set up
 remove(list = objects())
-options(width = 80, scipen = 2, digits = 6, load_cached_geocode = TRUE,
-  adjust_advice_for_covid = FALSE)
+options(width = 80, scipen = 2, digits = 6, load_cached_geocode = FALSE,
+  adjust_advice_for_covid = TRUE)
+library(sp)
 library(ggmap)
 library(readxl)
 library(tidyverse)
@@ -145,7 +146,7 @@ recode_list <- tribble(
   )
 recode_list <- all_countries %>%
   select(keys) %>%
-  left_join(recode_list, by= c("keys" = "find"))
+  left_join(recode_list, by = c("keys" = "find"))
 
 all_countries <- all_countries %>%
   bind_cols(select(recode_list, replace)) %>%
@@ -231,7 +232,21 @@ remove(country_development, dos_advice, country_codes)
 
 ## drop cities that do not have corresponding entries in country data
 city_data <- semi_join(city_data, country_data, by = "country_key") %>%
-  group_by(country_key)
+  group_by(country_key) %>%
+  arrange(desc(population))
+
+## exclude tightly packed cities in the same country
+city_dist <- spDists(as.matrix(city_data[, c("lon", "lat")]), longlat = TRUE)
+diag(city_dist) <- Inf
+city_dist  <- apply(city_dist < 32, 2, as.numeric)
+city_dist <- city_dist & outer(city_data$country_key, city_data$country_key,
+  FUN = "==")
+city_dist <- city_dist * city_data$population
+city_dist <- apply(city_dist, 2, max, na.rm = TRUE)
+city_dist <- city_data$population / city_dist
+city_dist <- city_dist > 2
+city_data <- city_data[city_dist, ]
+remove(city_dist)
 
 ## find notable cities in each country by three criteria
 capitol_city <- city_data %>%
@@ -240,17 +255,23 @@ capitol_city <- city_data %>%
   summarize("capitol" = last(address))
 
 largest_city <- city_data %>%
+  filter(!capitol) %>%
   arrange(population) %>%
   summarize("largest" = last(address))
 
 culture_city <- city_data %>%
+  filter(!capitol) %>%
   arrange(population) %>%
   arrange(heritage_sites) %>%
   summarize("cultural" = last(address))
 
 top_cities <- capitol_city %>%
   left_join(largest_city, by = "country_key") %>%
-  left_join(culture_city, by = "country_key")
+  left_join(culture_city, by = "country_key") %>%
+  mutate(
+    "largest" = if_else(is.na(largest), capitol, largest),
+    "cultural" = if_else(is.na(cultural), capitol, cultural)
+    )
 remove(largest_city, capitol_city, culture_city)
 
 ## extract data for each notable city and package for the country dataset
@@ -273,6 +294,39 @@ country_data <- left_join(country_data, top_cities, by = "country_key") %>%
   filter(!duplicated(country_key))
 remove(top_cities)
 
+## CREATE PARSIMONIOUS STRUCTURED REGION LABELS ================================
+region_labels <- tribble(
+  ~region, ~region_short,
+  "Southern Asia",             "Asia South",
+  "Northern Europe",           "Europe North",
+  "Southern Europe",           "Europe South",
+  "Northern Africa",           "Africa North",
+  "Polynesia",                 "Oceania Polynesia",
+  "Middle Africa",             "Africa Middle",
+  "Caribbean",                 "America Caribbean",
+  "South America",             "America South",
+  "Western Asia",              "Asia West",
+  "Australia and New Zealand", "Oceania AUS/NZL",
+  "Western Europe",            "Europe West",
+  "Eastern Europe",            "Europe East",
+  "Central America",           "America Central",
+  "Western Africa",            "Africa West",
+  "Northern America",          "America North",
+  "Southern Africa",           "Africa South",
+  "South-eastern Asia",        "Asia Southeast",
+  "Eastern Africa",            "Africa East",
+  "Eastern Asia",              "Asia East",
+  "Micronesia",                "Oceania Micronesia",
+  "Melanesia",                 "Oceania Melanesia",
+  "Central Asia",              "Asia Central",
+  )
+country_data <- country_data %>%
+  left_join(region_labels, by = "region") %>%
+  mutate(region_name = region, region = region_short) %>%
+  select(-region_short)
+remove(region_labels)
+
+## WRITE PACKAGE OF PROCESSED DATASETS TO DISK =================================
 save(city_data, country_data, heritage_sites,
   file = "B_Intermediates/processed_data.RData")
 
