@@ -235,7 +235,7 @@ selection_criteria <- tribble(
   "S: UN World Heritage Sites", 33,
 
   "Point Of Interest", "Population of largest city",
-  "S: United Nations", 25,
+  "Source: United Nations", 25,
 
   "Point Of Interest", "Cultural sites near selected cities",
   "S: UN World Heritage Sites", 25,
