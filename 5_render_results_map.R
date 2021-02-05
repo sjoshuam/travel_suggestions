@@ -392,10 +392,6 @@ country_sites$site[i] <- paste0(
   )
 remove(i)
 
-## trim extraneous city off South Korea to stay within margin
-warning("This is a manual intervention (auto solution not worth coding")
-country_sites <- filter(country_sites, city != "Busan")
-
 ## convert site data to a simpler text format
 compile_data <- function(x) {
   y <- x[nzchar(str_replace_all(x, "\t", ""))]
@@ -436,28 +432,28 @@ country_sites$city <- swap_elements(country_sites$city)
 country_sites$lines <- swap_elements(country_sites$lines)
 
 country_sites$country_key <- swap_elements(country_sites$country_key,
-  i = 1:2, j = 3:4)
+  i = 1:2, j = 4:3)
 country_sites$region <- swap_elements(country_sites$region,
-  i = 1:2, j = 3:4)
+  i = 1:2, j = 4:3)
 country_sites$country <- swap_elements(country_sites$country,
-  i = 1:2, j = 3:4)
+  i = 1:2, j = 4:3)
 country_sites$city <- swap_elements(country_sites$city,
-  i = 1:2, j = 3:4)
+  i = 1:2, j = 4:3)
 country_sites$lines <- swap_elements(country_sites$lines,
-  i = 1:2, j = 3:4)
+  i = 1:2, j = 4:3)
 
 remove(swap_elements)
 
 ## add dummy entries to complete grid
 country_sites <- bind_rows(
   country_sites,
-  country_sites[9:10, ]
+  country_sites[10:9, ]
   )
 country_sites[9:10, ] <- country_sites[1:2, ]
 country_sites[9:10, "lines"] <- 0
 country_sites[9:10, "city"] <- ""
 
-## determine basic coordinates
+## determine x coordinates
 country_sites$x <- seq(
   from = poster_dims["site_panel", "x_start"],
   to = poster_dims["site_panel", "x_end"],
@@ -467,28 +463,42 @@ country_sites$x <- seq(
   rep(times = 3) %>%
   magrittr::extract(seq(nrow(country_sites)))
 
-country_sites$y_title <- poster_dims["site_panel", "y_end"] - 0.2
-country_sites$y_sites <- poster_dims["site_panel", "y_end"] - 0.7
+## create default y coordinates
+str_height <- function(x, n = 0.2) {
+  x <- pull(x, 1)
+  x <- str_remove_all(x, "[^\n]")
+  x <- nchar(x) + 1
+  x * 0.35
+  }
 
-## adjust y coordinates based on number of lines
-spacing_factor   <- -0.3
-spacing_constant <- -0.8
-country_sites$y_sites[9:16] <- country_sites$y_sites[1:8] +
-  (country_sites$lines[1:8] * spacing_factor) + spacing_constant
-country_sites$y_title[9:16] <- country_sites$y_title[1:8] +
-  (country_sites$lines[1:8] * spacing_factor) + spacing_constant
+country_sites$y_title <- 23
+country_sites$y_sites <- 23
 
-country_sites$y_sites[17:24] <- country_sites$y_sites[9:16] +
-  (country_sites$lines[9:16] * spacing_factor) +
-  (spacing_constant)
-country_sites$y_title[17:24] <- country_sites$y_title[9:16] +
-  (country_sites$lines[9:16] * spacing_factor) +
-  (spacing_constant)
+## generate y coordinates for bottom row
+country_sites[17:24, "y_sites"] <- poster_dims["site_panel", "y_start"]
+country_sites[17:24, "y_title"] <- poster_dims["site_panel", "y_start"] +
+      str_height(country_sites[17:24, "city"])
 
-remove(spacing_factor, spacing_constant)
+## generate y coordinates for top row
+country_sites[1:8, "y_title"] <- poster_dims["site_panel", "y_end"] - 0.05
+country_sites[1:8, "y_sites"]  <- country_sites[1:8, "y_title"] - 0.45
 
-country_sites[17:18, "y_title"] <- country_sites[17:18, "y_title"] + 0.5
-country_sites[17:18, "y_sites"] <- country_sites[17:18, "y_sites"] + 0.5
+## generate y coordinates for middle row
+from_above <- country_sites[1:8, "y_title"]  +
+  str_height(country_sites[1:8, "city"]) + 0.45
+
+from_below <- country_sites[17:24, "y_sites"] +
+  str_height(country_sites[17:24, "city"]) + 0.45
+
+country_sites[9:16, "y_title"] <- (from_above + from_below) / 2
+country_sites[9:16, "y_sites"] <-  country_sites[9:16, "y_title"] - 0.45
+
+## manually adjust middle row
+warning("This is a manual intervention (auto solution not worth coding")
+i <- c(13, 14)
+country_sites[i, "y_title"] <- country_sites[i, "y_title"] - 0.5
+country_sites[i, "y_sites"] <- country_sites[i, "y_sites"] - 0.5
+remove(i)
 
 ## render panel title and sites
 travel_poster <- travel_poster +
@@ -500,16 +510,32 @@ travel_poster <- travel_poster +
     " In Each Country"),
     color = "gray90",
     size = 10, vjust = 1
+    )
+
+## render bottom row
+travel_poster <- travel_poster +
+  geom_text(
+    data = country_sites[17:24, ],
+    mapping = aes(x = x, label = city, color = region, y = y_sites),
+    hjust = 0, vjust = 0, size = 6
     ) +
   geom_text(
-    data = filter(country_sites, !duplicated(country_sites$country)),
-    mapping = aes(x = x, y = y_title, label = country, color = region),
-    size = 10, vjust = 1, hjust = 0
+    data = country_sites[17:24, ],
+    mapping = aes(x = x, label = country, color = region, y = y_title),
+    hjust = 0, vjust = 0, size = 10
+    )
+
+## render top two rows
+travel_poster <- travel_poster +
+  geom_text(
+    data = country_sites[c(1:8, 11:16), ],
+    mapping = aes(x = x, label = city, color = region, y = y_sites),
+    hjust = 0, vjust = 1, size = 6
     ) +
   geom_text(
-    data = country_sites,
-    mapping = aes(x = x, y = y_sites, label = city, color = region),
-    size = 6, vjust = 1, hjust = 0
+    data = country_sites[c(1:8, 11:16), ],
+    mapping = aes(x = x, label = country, color = region, y = y_title),
+    hjust = 0, vjust = 1, size = 10
     )
 
 ## RENDER POSTER ===============================================================
@@ -549,7 +575,9 @@ travel_poster <- travel_poster +
 
 ## write pdf
 pdf("C_Outputs/travel_suggestions.pdf", width = 36, height = 24)
+
 travel_poster
+
 graphics.off()
 
 ##########==========##########==========##########==========##########==========
