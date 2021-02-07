@@ -205,7 +205,9 @@ explanatory_text <- c(
   "for each country and all of the UNESCO World Cultural Heritage Sites ",
   "within a 50 kilometer (31 mile) radius of each city (indented below each ",
   "city).  The rest of this panel lists the decision criteria for selecting ",
-  "travel destinations and how much each counted towards the final selection."
+  "travel destinations and how much each counted towards the final selection. ",
+  "The R code underlying this project is on GitHub at: ",
+  "github.com/sjoshuam/travel_suggestions"
   )
 explanatory_text <- explanatory_text %>%
   paste0(collapse = "") %>%
@@ -573,11 +575,14 @@ travel_poster <- travel_poster +
     size = 1
     )
 
-## write pdf
-pdf("C_Outputs/travel_suggestions.pdf", width = 36, height = 24)
-
+## write visualization to storage in pdf and RData formats
+pdf("C_Outputs/travel_suggestions_poster.pdf", width = 36, height = 24)
 travel_poster
+graphics.off()
 
+png("C_Outputs/travel_suggestions.png", width = 36, height = 24, units = "in",
+  res = 72)
+travel_poster
 graphics.off()
 
 ##########==========##########==========##########==========##########==========
