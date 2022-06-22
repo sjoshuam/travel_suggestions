@@ -198,16 +198,14 @@ explanatory_text <- c(
   "This project divides the world ",
   "into twenty-two regions and suggests places to visit in each region.  The ",
   "regions are based on the United Nation's \"M49\" regional categorization ",
-  "system.  For each region, the project selects up to three metropolitan ",
+  "system.  For each region, the project selects up to three metro ",
   "areas in one country, based on points of interest and ease of travel.  ",
   "The map on the left depicts the selected countries (the text) and the ",
   "regions (the colors).  The bottom panel lists up to three cities selected ",
   "for each country and all of the UNESCO World Cultural Heritage Sites ",
-  "within a 50 kilometer (31 mile) radius of each city (indented below each ",
+  "within a 50-kilometer (31-mile) radius of each city (indented below each ",
   "city).  The rest of this panel lists the decision criteria for selecting ",
-  "travel destinations and how much each counted towards the final selection. ",
-  "The R code underlying this project is on GitHub at: ",
-  "github.com/sjoshuam/travel_suggestions"
+  "travel destinations and how much each counted towards the final selection. "
   )
 explanatory_text <- explanatory_text %>%
   paste0(collapse = "") %>%
@@ -508,7 +506,7 @@ travel_poster <- travel_poster +
     data = tibble(NA),
     x = mean(unlist(poster_dims["site_title", c("x_start", "x_end")])),
     y = poster_dims["site_title", "y_end"],
-    label = paste0("Suggested Cities and World Cultural Heritage Sites To Visit",
+    label = paste0("Suggested Cities And World Cultural Heritage Sites To Visit",
     " In Each Country"),
     color = "gray90",
     size = 10, vjust = 1
